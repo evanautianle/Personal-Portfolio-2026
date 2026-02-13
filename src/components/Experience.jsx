@@ -424,12 +424,24 @@ const Background = () => {
 };
 export const Experience = () => {
   const { camera } = useThree();
+  const controlsRef = useRef();
+useEffect(() => {
+  const controls = controlsRef.current;
+  if (!controls) return;
+
+  controls.target.set(0, -0.2, 0);
+
+  camera.position.set(-2.5, -0.2, 6.5);
+
+  controls.update();
+}, [camera]);
+
+
+
   const [zoomTarget] = useAtom(zoomAtom);
   const [page] = useAtom(pageAtom);
   // Internal lerped zoom value for smooth transitions
   const zoomLerp = useRef(0);
-  // OrbitControls ref
-  const controlsRef = useRef();
   // Easing function for more natural feel
   function easeInOut(t) {
     return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
@@ -466,22 +478,53 @@ export const Experience = () => {
   useFrame(() => {
     const controls = controlsRef.current;
     if (!controls) return;
+
     const lerpSpeed = 0.045;
     zoomLerp.current += (zoomTarget - zoomLerp.current) * lerpSpeed;
-    if (Math.abs(zoomTarget - zoomLerp.current) < 0.001) zoomLerp.current = zoomTarget;
+
+    if (Math.abs(zoomTarget - zoomLerp.current) < 0.001)
+      zoomLerp.current = zoomTarget;
+
     const easedZoom = easeInOut(zoomLerp.current);
-    const defaultDistance = 6.5;
-    const zoomDistance = 3.2;
-    const distance = defaultDistance + (zoomDistance - defaultDistance) * easedZoom;
-    // move camera forward/back along view direction
-    const dir = controls.object.position.clone().sub(controls.target).normalize();
-    controls.object.position.copy(controls.target.clone().add(dir.multiplyScalar(distance)));
-    controls.update();
-    const defaultFov = 45;
-    const zoomFov = 22;
-    camera.fov = defaultFov + (zoomFov - defaultFov) * easedZoom;
+    const lerp = (a, b, t) => a + (b - a) * t;
+
+    // OFFSETS
+    const defaultOffset = { x: -2.5, y: -0.2, z: 6.5 };
+    // straight-on reading view (NOT tilted)
+    const zoomOffset = { x: 0, y: 1.8, z: 5 };
+    const offset = {
+      x: lerp(defaultOffset.x, zoomOffset.x, easedZoom),
+      y: lerp(defaultOffset.y, zoomOffset.y, easedZoom),
+      z: lerp(defaultOffset.z, zoomOffset.z, easedZoom),
+    };
+    const targetY = lerp(-0.2, 0.1, easedZoom);
+
+    // Disable OrbitControls when zoomed in
+    const isZoomedIn = zoomLerp.current > 0.99;
+    if (isZoomedIn) {
+      controls.enabled = false;
+      camera.position.set(
+        offset.x,
+        targetY + offset.y,
+        offset.z
+      );
+      camera.lookAt(0, targetY, 0);
+    } else {
+      controls.enabled = true;
+      controls.target.set(0, targetY, 0);
+      camera.position.set(
+        controls.target.x + offset.x,
+        controls.target.y + offset.y,
+        controls.target.z + offset.z
+      );
+      controls.update();
+    }
+
+    // FOV zoom
+    camera.fov = lerp(45, 22, easedZoom);
     camera.updateProjectionMatrix();
   });
+
 
   // Dynamically control OrbitControls polar angles
   const restrictPolar = zoomLerp.current < 0.5;
@@ -571,14 +614,14 @@ export const Experience = () => {
         color={ORB_LIGHT_COLOR}
         castShadow
       />
-      <OrbitControls
-        ref={controlsRef}
-        key="main-orbit-controls"
-        target={[0, -0.2, 0]}
-        enableZoom={false}
-        minPolarAngle={minPolar}
-        maxPolarAngle={maxPolar}
-      />
+<OrbitControls
+  ref={controlsRef}
+  key="main-orbit-controls"
+  enableZoom={false}
+  enableDamping
+  dampingFactor={0.08}
+/>
+
       <Environment preset="studio" intensity={0.2}></Environment>
       <directionalLight
         position={[0, ORB_GROUP_Y + 3.5, 0]}
