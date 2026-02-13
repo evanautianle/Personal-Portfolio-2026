@@ -438,10 +438,15 @@ useEffect(() => {
 
 
 
-  const [zoomTarget] = useAtom(zoomAtom);
+  const [zoomTarget, setZoomTarget] = useAtom(zoomAtom);
   const [page] = useAtom(pageAtom);
   // Internal lerped zoom value for smooth transitions
   const zoomLerp = useRef(0);
+  // Track if zoom-in delay is active
+  const zoomDelayTimeout = useRef(null);
+  // Track if a zoom-in is pending (delayed)
+  const [pendingZoom, setPendingZoom] = useState(false);
+  const lastZoomTarget = useRef(zoomTarget);
   // Easing function for more natural feel
   function easeInOut(t) {
     return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
@@ -475,15 +480,44 @@ useEffect(() => {
 
   // Camera zoom effect
   // Smooth camera zoom/position
+  useEffect(() => {
+    // When zoomTarget transitions from 0 to 1, start a pending zoom
+    if (zoomTarget === 1 && lastZoomTarget.current === 0 && !pendingZoom) {
+      setPendingZoom(true);
+      if (!zoomDelayTimeout.current) {
+        zoomDelayTimeout.current = setTimeout(() => {
+          setPendingZoom(false);
+          zoomDelayTimeout.current = null;
+        }, 1000);
+      }
+    }
+    // If zoomTarget is reset to 0, cancel any pending zoom
+    if (zoomTarget === 0 && pendingZoom) {
+      setPendingZoom(false);
+      if (zoomDelayTimeout.current) {
+        clearTimeout(zoomDelayTimeout.current);
+        zoomDelayTimeout.current = null;
+      }
+    }
+    lastZoomTarget.current = zoomTarget;
+    // eslint-disable-next-line
+  }, [zoomTarget]);
+
   useFrame(() => {
     const controls = controlsRef.current;
     if (!controls) return;
 
-    const lerpSpeed = 0.01;
-    zoomLerp.current += (zoomTarget - zoomLerp.current) * lerpSpeed;
+    // Only start lerping zoom after delay if pendingZoom is false
+    let effectiveZoomTarget = zoomTarget;
+    if (zoomTarget === 1 && pendingZoom) {
+      effectiveZoomTarget = 0;
+    }
 
-    if (Math.abs(zoomTarget - zoomLerp.current) < 0.001)
-      zoomLerp.current = zoomTarget;
+    const lerpSpeed = 0.01;
+    zoomLerp.current += (effectiveZoomTarget - zoomLerp.current) * lerpSpeed;
+
+    if (Math.abs(effectiveZoomTarget - zoomLerp.current) < 0.001)
+      zoomLerp.current = effectiveZoomTarget;
 
     const easedZoom = easeInOut(zoomLerp.current);
     const lerp = (a, b, t) => a + (b - a) * t;
