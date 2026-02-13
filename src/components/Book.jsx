@@ -1,19 +1,23 @@
+import { useCursor, useTexture } from "@react-three/drei";
+import { useFrame } from "@react-three/fiber";
+import { useAtom } from "jotai";
+import { easing } from "maath";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-    Bone,
-    BoxGeometry,
-    Float32BufferAttribute,
-    MeshStandardMaterial,
-    Skeleton,
-    SkeletonHelper,
-    SkinnedMesh,
-    Uint16BufferAttribute,
-    Vector3,
-} from "three"
-import { degToRad } from "three/src/math/MathUtils"
-import {pages} from "./UI"
-import { useMemo, useRef } from "react"
-import { Box, useHelper, useTexture } from "@react-three/drei";
-import { useFrame } from "@react-three/fiber"
+  Bone,
+  BoxGeometry,
+  Color,
+  Float32BufferAttribute,
+  MathUtils,
+  MeshStandardMaterial,
+  Skeleton,
+  SkinnedMesh,
+  SRGBColorSpace,
+  Uint16BufferAttribute,
+  Vector3,
+} from "three";
+import { degToRad } from "three/src/math/MathUtils.js";
+import { pageAtom, pages } from "./UI";
 
 const PAGE_WIDTH = 1.28;
 const PAGE_HEGHT = 1.71;
@@ -23,12 +27,20 @@ const SEGMENT_WIDTH = PAGE_WIDTH / PAGE_SEGMENTS;
 const HALF_PAGE_WIDTH = PAGE_WIDTH / 2;
 const whiteColor = "#ffffff";
 
-const Page = ({number, front, back, ...props}) => {
+
+pages.forEach((page) => {
+  useTexture.preload(`/textures/${page.front}.jpg`);
+  useTexture.preload(`/textures/${page.back}.jpg`);
+  useTexture.preload(`/textures/book-cover-roughness.jpg`);
+});
+
+const Page = ({number, front, back, page, opened, ...props}) => {
     const [picture, picture2, pictureRoughness] = useTexture([
         `/textures/${front}.jpg`,
         `/textures/${back}.jpg`,
         ...(number === 0 || number === pages.length - 1) ? ['/textures/book-cover-roughness.jpg'] : [],
     ]);
+    picture.colorSpace = picture2.colorSpace = SRGBColorSpace;
     const group = useRef()
     const skinnedMeshRef = useRef()
 
@@ -122,24 +134,30 @@ const Page = ({number, front, back, ...props}) => {
 
     useFrame(() => {
         if (!skinnedMeshRef.current) return;
+        let targetRotation = opened ? -Math.PI/2 : Math.PI/2;
         const bones = skinnedMeshRef.current.skeleton.bones;
+        bones[0].rotation.y = targetRotation;
     })
 
     return (
         <group {...props}>
-            <primitive object={manualSkinnedMesh} ref={skinnedMeshRef} />
+            <primitive object={manualSkinnedMesh} ref={skinnedMeshRef} 
+            position-z = {-number * PAGE_DEPTH + page * PAGE_DEPTH}
+            />
         </group>
     )
 }
 
 export const Book = ({...props}) => {
+    const [page, setPage] = useAtom(pageAtom);
     return (
-        <group {...props}> 
+        <group {...props} rotation-y={-Math.PI/2}> 
         {[...pages].map((pageData, index) => (
             <Page
-                position-z={-index * PAGE_DEPTH * 10}
                 key={index}
+                page={page}
                 number={index}
+                opened={page > index}
                 {...pageData}
             />
         ))}
