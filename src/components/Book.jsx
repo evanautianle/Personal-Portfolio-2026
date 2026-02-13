@@ -20,7 +20,10 @@ import { degToRad } from "three/src/math/MathUtils.js";
 import { pageAtom, pages } from "./UI";
 
 const easingFactor = 0.5;
+const easingFactorFold = 0.3;
 const insideCurveStrength = 0.18;
+const outsideCurveStrength = 0.05;
+const turningCurveStrength = 0.09;
 const PAGE_WIDTH = 1.28;
 const PAGE_HEGHT = 1.71;
 const PAGE_DEPTH = 0.003;
@@ -39,11 +42,15 @@ const Page = ({number, front, back, page, opened, bookClosed, ...props}) => {
     const [picture, picture2, pictureRoughness] = useTexture([
         `/textures/${front}.jpg`,
         `/textures/${back}.jpg`,
-        ...(number === 0 || number === pages.length - 1) ? ['/textures/book-cover-roughness.jpg'] : [],
+        ...(number === 0 || number === pages.length - 1
+            ? ["/textures/book-cover-roughness.jpg"]
+            : []),
     ]);
     picture.colorSpace = picture2.colorSpace = SRGBColorSpace;
     const group = useRef()
     const skinnedMeshRef = useRef()
+    const turnedAt = useRef(0);
+    const lastOpened = useRef(opened);
 
     const manualSkinnedMesh = useMemo(() => {
         // Create a NEW geometry for each page
@@ -135,6 +142,14 @@ const Page = ({number, front, back, page, opened, bookClosed, ...props}) => {
 
     useFrame((_, delta) => {
         if (!skinnedMeshRef.current || !group.current) return;
+
+        if (lastOpened.current !== opened) {
+            turnedAt.current = +new Date();
+            lastOpened.current = opened;
+        }
+        let turningTime = Math.min(400, new Date() - turnedAt.current)/400;
+        turningTime = Math.sin(turningTime * Math.PI);
+
         let targetRotation = opened ? -Math.PI/2 : Math.PI/2;
         if (!bookClosed) {
             targetRotation += degToRad(number*0.8);
@@ -144,8 +159,25 @@ const Page = ({number, front, back, page, opened, bookClosed, ...props}) => {
         for (let i = 0; i < bones.length; i++) {
             const target = i === 0 ? group.current : bones[i];
             const insideCurveIntensity = i < 8 ? Math.sin(i * 0.2 + 0.25) : 0;
-            let rotationAngle = insideCurveStrength * insideCurveIntensity *targetRotation;
+            const outsideCurveIntensity = i >= 8 ? Math.cos(i * 0.3 + 0.09) : 0;
+            const turningCurveIntensity = Math.sin(i * Math.PI * (1/bones.length))* turningTime;
+            let rotationAngle = insideCurveStrength * insideCurveIntensity *targetRotation
+            - outsideCurveStrength * outsideCurveIntensity * targetRotation +
+            turningCurveStrength * turningCurveIntensity * targetRotation;
+            let foldRotationAngle = degToRad(Math.sign(targetRotation) * 2);
+            if (bookClosed) {
+                if (i === 0) {
+                    rotationAngle = targetRotation;
+                    foldRotationAngle = 0;
+                } else {
+                    rotationAngle = 0;
+                    foldRotationAngle = 0;
+                }
+            }
             easing.dampAngle(target.rotation, "y", rotationAngle, easingFactor, delta);
+
+            const foldIntensity = i > 8 ? Math.sin(i * Math.PI * (1/bones.length) - 0.5) * turningTime : 0;
+            easing.dampAngle(target.rotation, "x", foldRotationAngle * foldIntensity, easingFactorFold, delta);
         }
        
     })
