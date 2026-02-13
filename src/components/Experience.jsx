@@ -1,12 +1,14 @@
 import { Environment, Float, OrbitControls } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
+import { CanvasTexture, LinearFilter } from "three";
 import { Book } from "./Book";
 
 const PILLAR_X_OFFSET = 2.5;
 const PILLAR_HEIGHT = 7.2;
 const PILLAR_RADIUS = 0.55;
 const PILLAR_Y = -2.2;
+const PILLAR_BOTTOM_EXTRA = 24.0;
 const BASE_Y = -1.2;
 const BASE_RADIUS = 1.2;
 const BASE_HEIGHT = 0.35;
@@ -33,6 +35,12 @@ const CITY_RING_COUNT = 16;
 const CITY_RING_COUNT_OUTER = 22;
 const ORB_GROUP_Y = 4.6;
 const ORB_PARTICLE_COUNT = 28;
+const CITY_BOTTOM_EXTRA = 26.0;
+const FOG_COLOR = "#0a201b";
+const FOG_DENSITY = 0.08;
+const MIST_Y = -2.4;
+const MIST_SIZE = 90;
+const MIST_OPACITY = 0.75;
 const PILLAR_RING_OFFSETS_LEFT = [-2.7, -1.35, -0.1, 1.1, 2.6];
 const PILLAR_RING_OFFSETS_RIGHT = [-2.2, -0.6, 0.7, 2.1, 3.0];
 const PILLAR_GLOW_OFFSETS_LEFT = [-2.0, -0.3, 1.4, 2.9];
@@ -42,6 +50,14 @@ const PILLAR_GLOW_THICKNESS = 0.06;
 const Pillar = ({ x, rings, glows, tilt }) => {
   return (
     <group position={[x, 0, 0]} rotation-z={tilt}>
+      <mesh
+        position={[0, PILLAR_Y - PILLAR_HEIGHT / 2 - PILLAR_BOTTOM_EXTRA / 2, 0]}
+        castShadow
+        receiveShadow
+      >
+        <cylinderGeometry args={[PILLAR_RADIUS * 0.95, PILLAR_RADIUS * 0.95, PILLAR_BOTTOM_EXTRA, 28]} />
+        <meshStandardMaterial color="#0b1b16" roughness={0.75} metalness={0.06} />
+      </mesh>
       <mesh position={[0, PILLAR_Y, 0]} castShadow receiveShadow>
         <cylinderGeometry
           args={[PILLAR_RADIUS * 0.88, PILLAR_RADIUS * 1.05, PILLAR_HEIGHT, 32]}
@@ -138,11 +154,6 @@ const Background = () => {
 
   return (
     <group>
-      <mesh position={[-4.6, 2.2, -2.8]} rotation-z={-0.08}>
-        <cylinderGeometry args={[0.9, 0.35, 6.2, 24]} />
-        <meshStandardMaterial color="#0a1f1a" emissive="#114b3b" emissiveIntensity={0.35} roughness={0.65} />
-      </mesh>
-
       <group position={[0, ORB_GROUP_Y, 0]}>
         <mesh position={[0, 0, 0]} ref={orbRef}>
           <sphereGeometry args={[0.95, 32, 32]} />
@@ -174,6 +185,10 @@ const Background = () => {
           const capHeight = height * 0.12;
           return (
             <group key={`ring-${angle}`} position={[x, 0, z]} rotation-y={-angle}>
+              <mesh position={[0, -CITY_BOTTOM_EXTRA / 2, 0]}>
+                <cylinderGeometry args={[baseRadius * 0.9, baseRadius * 0.95, CITY_BOTTOM_EXTRA, 20]} />
+                <meshStandardMaterial color="#051512" emissive="#0a3329" emissiveIntensity={0.16} roughness={0.9} />
+              </mesh>
               <mesh position={[0, coreHeight / 2, 0]}>
                 <cylinderGeometry args={[baseRadius, topRadius, coreHeight, 20]} />
                 <meshStandardMaterial color="#061815" emissive="#0b3a2f" emissiveIntensity={0.2} roughness={0.85} />
@@ -205,6 +220,10 @@ const Background = () => {
           const topRadius = baseRadius * (0.5 + (index % 4) * 0.08);
           return (
             <group key={`outer-${angle}`} position={[x, 0, z]} rotation-y={-angle}>
+              <mesh position={[0, -CITY_BOTTOM_EXTRA / 2, 0]}>
+                <cylinderGeometry args={[baseRadius * 0.85, baseRadius * 0.9, CITY_BOTTOM_EXTRA, 18]} />
+                <meshStandardMaterial color="#051512" emissive="#0a3329" emissiveIntensity={0.14} roughness={0.92} />
+              </mesh>
               <mesh position={[0, height / 2, 0]}>
                 <cylinderGeometry args={[baseRadius, topRadius, height, 18]} />
                 <meshStandardMaterial color="#071a16" emissive="#0c3a2f" emissiveIntensity={0.18} roughness={0.9} />
@@ -245,8 +264,35 @@ const Background = () => {
   );
 };
 export const Experience = () => {
+  const mistAlpha = useMemo(() => {
+    const size = 256;
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    const gradient = ctx.createRadialGradient(
+      size / 2,
+      size / 2,
+      size * 0.1,
+      size / 2,
+      size / 2,
+      size * 0.5
+    );
+    gradient.addColorStop(0, "rgba(255, 255, 255, 0.9)");
+    gradient.addColorStop(0.6, "rgba(255, 255, 255, 0.4)");
+    gradient.addColorStop(1, "rgba(255, 255, 255, 0.0)");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, size, size);
+    const texture = new CanvasTexture(canvas);
+    texture.minFilter = LinearFilter;
+    texture.magFilter = LinearFilter;
+    texture.needsUpdate = true;
+    return texture;
+  }, []);
+
   return (
     <>
+      <fogExp2 attach="fog" args={[FOG_COLOR, FOG_DENSITY]} />
       <Background />
       <group>
         <mesh position={[0, BASE_Y, 0]} receiveShadow>
@@ -328,9 +374,17 @@ export const Experience = () => {
         shadow-mapSize-height={2048}
         shadow-bias={-0.0001}
       />
-      <mesh position-y={-1.5} rotation-x={-Math.PI / 2} receiveShadow>
-        <planeGeometry args={[100, 100]} />
-        <shadowMaterial transparent opacity={0.2} />
+      <mesh position={[0, MIST_Y, 0]} rotation-x={-Math.PI / 2} renderOrder={1}>
+        <planeGeometry args={[MIST_SIZE, MIST_SIZE]} />
+        <meshStandardMaterial
+          color="#0a2019"
+          emissive="#0e3026"
+          emissiveIntensity={0.25}
+          transparent
+          opacity={MIST_OPACITY}
+          alphaMap={mistAlpha}
+          depthWrite={false}
+        />
       </mesh>
     </>
   );
