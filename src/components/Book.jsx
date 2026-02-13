@@ -17,7 +17,7 @@ import {
   Vector3,
 } from "three";
 import { degToRad } from "three/src/math/MathUtils.js";
-import { pageAtom, pages } from "./UI";
+import { pageAtom, pages, zoomAtom } from "./UI";
 
 const easingFactor = 0.5;
 const easingFactorFold = 0.3;
@@ -231,11 +231,10 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
   });
 
   const [_, setPage] = useAtom(pageAtom);
+  const [, setZoom] = useAtom(zoomAtom);
   const [highlighted, setHighlighted] = useState(false);
   useCursor(highlighted);
 
-  // ...existing code...
-  // Remove onClick logic here, as UI handles zoom/page logic
   return (
     <group
       {...props}
@@ -247,6 +246,17 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
       onPointerLeave={(e) => {
         e.stopPropagation();
         setHighlighted(false);
+      }}
+      onClick={(e) => {
+        e.stopPropagation();
+        // Turn the page and zoom in/out as with the UI buttons
+        setPage(opened ? number : number + 1);
+        setHighlighted(false);
+        if (number === 0 || number === pages.length - 1) {
+          setZoom(0);
+        } else {
+          setZoom(1);
+        }
       }}
     >
       <primitive
@@ -260,6 +270,7 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
 
 export const Book = ({ ...props }) => {
   const [page] = useAtom(pageAtom);
+  const [, setZoom] = useAtom(zoomAtom);
   const [delayedPage, setDelayedPage] = useState(page);
 
   useEffect(() => {
@@ -267,16 +278,20 @@ export const Book = ({ ...props }) => {
     const goToPage = () => {
       setDelayedPage((delayedPage) => {
         if (page === delayedPage) {
+          // Set zoom only when animation completes
+          if (delayedPage === 0 || delayedPage === pages.length) {
+            setZoom(0);
+          } else {
+            setZoom(1);
+          }
           return delayedPage;
         } else {
-          // Step toward the target page for a flip animation
           timeout = setTimeout(
             () => {
               goToPage();
             },
             Math.abs(page - delayedPage) > 2 ? 50 : 150
           );
-          // Always step by 1, even for last page (back cover)
           if (page > delayedPage) {
             return delayedPage + 1;
           }
@@ -290,7 +305,7 @@ export const Book = ({ ...props }) => {
     return () => {
       clearTimeout(timeout);
     };
-  }, [page]);
+  }, [page, setZoom]);
 
   return (
     <group {...props} rotation-y={-Math.PI / 2}>

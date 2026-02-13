@@ -48,13 +48,9 @@ export const UI = () => {
 
   return (
     <>
-      <main className=" pointer-events-none select-none z-10 fixed  inset-0  flex justify-between flex-col">
-        <a
-          className="pointer-events-auto mt-10 ml-10"
-        >
-          <img className="w-20" src="/textures/book-cover.jpg" />
-        </a>
-        <div className="w-full overflow-auto pointer-events-auto flex justify-center">
+      <main className="pointer-events-none select-none z-10 fixed inset-0 flex flex-col justify-end">
+        {/* Button bar fixed to bottom */}
+        <div className="w-full pointer-events-auto flex justify-center absolute bottom-0 left-0">
           <div className="overflow-auto flex items-center gap-4 max-w-full p-10">
             {[...pages].map((_, index) => (
               <button
@@ -66,12 +62,6 @@ export const UI = () => {
                 }`}
                 onClick={() => {
                   setPage(index);
-                  // Zoom if not cover, else reset zoom
-                  if (index === 0 || index === pages.length) {
-                    setZoom(0);
-                  } else {
-                    setZoom(1);
-                  }
                 }}
               >
                 {index === 0 ? "Cover" : `Page ${index}`}
@@ -85,7 +75,6 @@ export const UI = () => {
               }`}
               onClick={() => {
                 setPage(pages.length);
-                setZoom(0);
               }}
             >
               Back Cover
@@ -93,7 +82,6 @@ export const UI = () => {
           </div>
         </div>
       </main>
-
     </>
   );
 };
