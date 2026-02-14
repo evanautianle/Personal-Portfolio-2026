@@ -9,8 +9,8 @@ import { UI } from "./components/UI";
 function Navbar() {
   return (
     <nav className="w-full fixed top-0 left-0 z-50 bg-black/60 backdrop-blur-md text-white flex justify-between items-center px-8 py-4 shadow-lg">
-      <div className="font-bold text-2xl tracking-widest">Evan's Portfolio</div>
-      <ul className="flex gap-8 text-lg">
+      <div className="font-bold text-2xl tracking-widest uppercase">Evan's Portfolio</div>
+      <ul className="flex gap-8 text-lg uppercase">
         <li><a href="#hero" className="hover:text-teal-300 transition">Home</a></li>
         <li><a href="#about" className="hover:text-teal-300 transition">About</a></li>
         <li><a href="#projects" className="hover:text-teal-300 transition">Projects</a></li>

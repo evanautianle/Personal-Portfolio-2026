@@ -3,7 +3,6 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useMemo, useRef, useEffect, useState } from "react";
 import { useAtom } from "jotai";
 import { zoomAtom, pageAtom, pages } from "./UI";
-import { CanvasTexture, LinearFilter } from "three";
 import { Book } from "./Book";
 
 const PILLAR_X_OFFSET = 2.5;
@@ -41,15 +40,12 @@ const CITY_BOTTOM_EXTRA = 26.0;
 const THEME_GREEN = "#79e08a";
 const THEME_GREEN_GLOW = "#9af6a8";
 const THEME_GREEN_SOFT = "#7be88f";
-const THEME_GREEN_DARK = "#0e2218";
-const THEME_GREEN_DEEP = "#0b1a12";
-const THEME_GREEN_MID = "#1b4a2a";
+const THEME_GREEN_DARK = "#07120c";
+const THEME_GREEN_DEEP = "#040a07";
+const THEME_GREEN_MID = "#102017";
 const THEME_GREEN_RICH = "#2d6e3a";
-const FOG_COLOR = "#102a1d";
+const FOG_COLOR = "#07120c";
 const FOG_DENSITY = 0.14;
-const MIST_Y = -4.4;
-const MIST_SIZE = 200;
-const MIST_OPACITY = 0.35;
 const ORB_LIGHT_OFFSET_Y = 1.4;
 const ORB_LIGHT_INTENSITY = 3.2;
 const ORB_LIGHT_DISTANCE = 18;
@@ -202,17 +198,17 @@ const Background = () => {
       <group position={[0, ORB_GROUP_Y, 0]}>
         <mesh position={[0, 0, 0]} ref={orbRef}>
           <sphereGeometry args={[0.95, 32, 32]} />
-          <meshStandardMaterial color={THEME_GREEN_DARK} emissive={THEME_GREEN_SOFT} emissiveIntensity={0.9} roughness={0.25} />
+          <meshStandardMaterial color="#040a07" emissive={THEME_GREEN_SOFT} emissiveIntensity={0.9} roughness={0.25} />
         </mesh>
 
         <mesh position={[0, -0.05, 0]} rotation-x={Math.PI / 2} ref={ringRef}>
           <torusGeometry args={[2.8, 0.07, 24, 120]} />
-          <meshStandardMaterial color={THEME_GREEN_DARK} emissive={THEME_GREEN_SOFT} emissiveIntensity={0.6} roughness={0.4} />
+          <meshStandardMaterial color="#07120c" emissive={THEME_GREEN_SOFT} emissiveIntensity={0.6} roughness={0.4} />
         </mesh>
 
         <mesh position={[0, -1.0, 0]} rotation-x={Math.PI / 2}>
           <torusGeometry args={[1.6, 0.04, 20, 90]} />
-          <meshStandardMaterial color={THEME_GREEN_DARK} emissive={THEME_GREEN} emissiveIntensity={0.4} roughness={0.5} />
+          <meshStandardMaterial color="#07120c" emissive={THEME_GREEN} emissiveIntensity={0.4} roughness={0.5} />
         </mesh>
       </group>
 
@@ -233,31 +229,31 @@ const Background = () => {
               <mesh position={[0, -CITY_BOTTOM_EXTRA / 2, 0]}>
                 <cylinderGeometry args={[baseRadius * 0.9, baseRadius * 0.95, CITY_BOTTOM_EXTRA, 20]} />
                 <meshStandardMaterial
-                  color="#051512"
-                  emissive="#0a3329"
-                  emissiveIntensity={0.16}
-                  roughness={0.9}
+                  color="#020705"
+                  emissive="#061a14"
+                  emissiveIntensity={0.13}
+                  roughness={0.92}
                   roughnessMap={pillarRoughness}
                 />
               </mesh>
               <mesh position={[0, coreHeight / 2, 0]}>
                 <cylinderGeometry args={[baseRadius, topRadius, coreHeight, 20]} />
                 <meshStandardMaterial
-                  color="#061815"
-                  emissive="#0b3a2f"
-                  emissiveIntensity={0.2}
-                  roughness={0.85}
+                  color="#07120c"
+                  emissive="#0a1d16"
+                  emissiveIntensity={0.16}
+                  roughness={0.88}
                   roughnessMap={pillarRoughness}
                 />
               </mesh>
               <mesh position={[0, coreHeight * 0.65, 0]} rotation-x={Math.PI / 2}>
                 <torusGeometry args={[baseRadius * 1.18, 0.03, 16, 48]} />
                 <meshStandardMaterial
-                  color="#0f3026"
+                  color="#0a1812"
                   emissive={THEME_GREEN_SOFT}
-                  emissiveIntensity={0.45}
-                  roughness={0.35}
-                  metalness={0.2}
+                  emissiveIntensity={0.35}
+                  roughness={0.38}
+                  metalness={0.18}
                   roughnessMap={pillarRoughness}
                 />
               </mesh>
@@ -451,32 +447,6 @@ useEffect(() => {
   function easeInOut(t) {
     return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
   }
-  const mistAlpha = useMemo(() => {
-    const size = 512;
-    const canvas = document.createElement("canvas");
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext("2d");
-    const gradient = ctx.createRadialGradient(
-      size / 2,
-      size / 2,
-      0,
-      size / 2,
-      size / 2,
-      size * 0.95
-    );
-    gradient.addColorStop(0, "rgba(255, 255, 255, 0.65)");
-    gradient.addColorStop(0.5, "rgba(255, 255, 255, 0.35)");
-    gradient.addColorStop(0.85, "rgba(255, 255, 255, 0.12)");
-    gradient.addColorStop(1, "rgba(255, 255, 255, 0.0)");
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, size, size);
-    const texture = new CanvasTexture(canvas);
-    texture.minFilter = LinearFilter;
-    texture.magFilter = LinearFilter;
-    texture.needsUpdate = true;
-    return texture;
-  }, []);
 
   // Camera zoom effect
   // Smooth camera zoom/position
@@ -665,18 +635,6 @@ useEffect(() => {
         shadow-mapSize-height={2048}
         shadow-bias={-0.0001}
       />
-      <mesh position={[0, MIST_Y, 0]} rotation-x={-Math.PI / 2} renderOrder={1}>
-        <planeGeometry args={[MIST_SIZE, MIST_SIZE]} />
-        <meshStandardMaterial
-          color={THEME_GREEN_DARK}
-          emissive={THEME_GREEN_MID}
-          emissiveIntensity={0.25}
-          transparent
-          opacity={MIST_OPACITY}
-          alphaMap={mistAlpha}
-          depthWrite={false}
-        />
-      </mesh>
     </>
   );
 };
