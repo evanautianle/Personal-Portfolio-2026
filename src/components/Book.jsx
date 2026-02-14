@@ -30,18 +30,6 @@ const PAGE_DEPTH = 0.015;
 const COVER_DEPTH = 0.025;
 const PAGE_SEGMENTS = 30;
 const SEGMENT_WIDTH = PAGE_WIDTH / PAGE_SEGMENTS;
-const PAGE_SPACING = 1.5; // Multiplier for spacing to prevent overlap
-
-// Add spacing between pages to prevent overlap
-const getPageOffset = (pageNumber, totalPages) => {
-  if (pageNumber === 0) return 0; // Front cover at base
-  if (pageNumber === totalPages - 1) {
-    // Back cover: account for front cover + all pages in between
-    return (COVER_DEPTH + (totalPages - 2) * PAGE_DEPTH) * PAGE_SPACING;
-  }
-  // Regular pages: after front cover
-  return (COVER_DEPTH + (pageNumber - 1) * PAGE_DEPTH) * PAGE_SPACING;
-};
 
 // Shared skinned page geometry (one-time setup)
 const pageGeometry = new BoxGeometry(
@@ -282,7 +270,7 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
       <primitive
         object={manualSkinnedMesh}
         ref={skinnedMeshRef}
-        position-z={-getPageOffset(number, pages.length) + getPageOffset(page, pages.length)}
+        position-z={-number * PAGE_DEPTH + page * PAGE_DEPTH}
       />
     </group>
   );
